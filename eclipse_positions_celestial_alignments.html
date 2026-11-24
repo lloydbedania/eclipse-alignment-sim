@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eclipse Positions & Celestial Alignments</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            space: {
+              950: '#060913',
+              900: '#0b101f',
+              850: '#11182c',
+              800: '#18223c',
+              700: '#263457',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b101f; }
+    ::-webkit-scrollbar-thumb { background: #18223c; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #263457; }
+
+    canvas { touch-action: none; }
+    
+    .glass-panel {
+      background: rgba(17, 24, 44, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .pulse-glow-amber {
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.35);
+    }
+    
+    .pulse-glow-red {
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.35);
+    }
+  </style>
+</head>
+<body class="bg-space-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- HEADER & MISSION TRACKER BAR -->
+  <header class="border-b border-slate-800 bg-space-900/95 sticky top-0 z-40 px-4 py-3 shadow-xl backdrop-blur-md">
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
+      
+      <!-- Title & Info -->
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 via-indigo-600 to-purple-600 flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-500/25 shrink-0">
+          <i class="fa-solid fa-planet-moon"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs text-slate-400 font-semibold">Interactive Alignment Model</span>
+          </div>
+          <h1 class="text-base sm:text-lg font-extrabold text-white tracking-tight mt-0.5">
+            Eclipse Positions & Celestial Alignments
+          </h1>
+        </div>
+      </div>
+
+      <!-- Live Two-Step Mission Tracker -->
+      <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+        
+        <!-- Mission 1: Solar Eclipse -->
+        <div id="missionSolarCard" class="flex-1 lg:flex-initial bg-space-950 px-3.5 py-2 rounded-xl border border-slate-800 flex items-center gap-3 transition-all">
+          <div id="missionSolarIcon" class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-bold text-xs shrink-0">
+            1
+          </div>
+          <div class="text-xs">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Challenge 1: Solar Eclipse</span>
+            <span id="missionSolarStatus" class="font-bold text-amber-400">Sun ➔ Moon ➔ Earth</span>
+          </div>
+          <span id="missionSolarBadge" class="ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded bg-slate-800 text-slate-400">Pending</span>
+        </div>
+
+        <!-- Mission 2: Lunar Eclipse -->
+        <div id="missionLunarCard" class="flex-1 lg:flex-initial bg-space-950 px-3.5 py-2 rounded-xl border border-slate-800 flex items-center gap-3 transition-all">
+          <div id="missionLunarIcon" class="w-7 h-7 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center font-bold text-xs shrink-0">
+            2
+          </div>
+          <div class="text-xs">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Challenge 2: Lunar Eclipse</span>
+            <span id="missionLunarStatus" class="font-bold text-red-400">Sun ➔ Earth ➔ Moon</span>
+          </div>
+          <span id="missionLunarBadge" class="ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded bg-slate-800 text-slate-400">Pending</span>
+        </div>
+
+        <!-- Overall Master Badge -->
+        <div class="bg-space-950 px-3 py-2 rounded-xl border border-slate-800 flex items-center gap-2 shrink-0">
+          <i id="overallAwardIcon" class="fa-solid fa-trophy text-slate-500 text-sm"></i>
+          <span id="overallProgressText" class="font-mono text-xs font-bold text-slate-300">0 / 2 Completed</span>
+        </div>
+
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+    <!-- LEFT COLUMN: INTERACTIVE ALIGNMENT WORKBENCH (8 COLS) -->
+    <div class="lg:col-span-8 flex flex-col gap-4">
+      
+      <!-- TOP-DOWN ORBITAL CANVAS CARD -->
+      <div class="glass-panel rounded-2xl overflow-hidden flex flex-col border border-slate-800 shadow-2xl relative">
+        
+        <!-- Canvas Top Toolbar -->
+        <div class="p-3 bg-space-900/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <h2 class="text-xs font-extrabold text-slate-200 uppercase tracking-wider">
+              Top-Down Orbital Workbench (Drag Moon to Align)
+            </h2>
+          </div>
+
+          <!-- Preset Quick Buttons -->
+          <div class="flex items-center gap-2">
+            <button onclick="applyPreset('solar')" class="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/30 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-sun text-amber-400"></i> Solar Align (0°)
+            </button>
+            <button onclick="applyPreset('lunar')" class="px-3 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-bold border border-red-500/30 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-moon text-red-400"></i> Lunar Align (180°)
+            </button>
+            <button onclick="resetSimulation()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition" title="Reset View">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Top-Down Viewport Canvas -->
+        <div class="w-full h-[380px] bg-space-950 relative cursor-grab active:cursor-grabbing select-none overflow-hidden">
+          <canvas id="topOrbitCanvas" class="w-full h-full block"></canvas>
+          
+          <!-- Helper Drag Indicator Overlay -->
+          <div class="absolute bottom-3 left-3 bg-space-900/90 backdrop-blur text-slate-300 text-[11px] px-3 py-1.5 rounded-xl border border-slate-800 pointer-events-none flex items-center gap-2 shadow-lg">
+            <i class="fa-solid fa-hand-pointer text-indigo-400 animate-bounce"></i>
+            <span>Click & Drag Moon along its orbit path</span>
+          </div>
+
+          <!-- Umbra/Penumbra Legend Overlay -->
+          <div class="absolute top-3 right-3 bg-space-900/90 backdrop-blur text-[10px] px-3 py-2 rounded-xl border border-slate-800 pointer-events-none space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-sm bg-red-900 border border-red-500 inline-block"></span>
+              <span class="text-slate-200 font-bold">Umbra</span>
+              <span class="text-slate-400">(Full Shadow Cone)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-sm bg-indigo-950 border border-indigo-700 inline-block"></span>
+              <span class="text-slate-200 font-bold">Penumbra</span>
+              <span class="text-slate-400">(Partial Shadow Cone)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Control Sliders Bar -->
+        <div class="p-4 bg-space-900 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+          
+          <!-- Slider 1: Moon Orbital Angle -->
+          <div class="flex items-center gap-3 w-full md:w-1/2">
+            <label for="moonAngleSlider" class="font-bold text-slate-200 whitespace-nowrap flex items-center gap-1.5">
+              <i class="fa-solid fa-compass text-indigo-400"></i> Moon Position:
+            </label>
+            <input type="range" id="moonAngleSlider" min="0" max="360" value="0" step="1" oninput="updateMoonAngle(this.value)" class="w-full accent-indigo-500 bg-space-950 rounded-lg h-2 cursor-pointer">
+            <span id="moonAngleValue" class="font-mono text-indigo-300 font-extrabold w-12 text-right">0°</span>
+          </div>
+
+          <!-- Toggle: Orbital Tilt Node Alignment -->
+          <div class="flex items-center justify-between md:justify-end gap-3 w-full md:w-1/2 border-t md:border-t-0 border-slate-800 pt-3 md:pt-0">
+            <div class="text-right">
+              <span class="font-bold text-slate-200 block">Orbital Tilt (5.14° Inclination)</span>
+              <span id="nodeStatusText" class="text-[10px] text-amber-400 font-semibold">Node Aligned (0° Height Offset)</span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="nodeAlignToggle" onchange="toggleNodeAlignment(this.checked)" checked class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- SIDE-VIEW EDGE-ON TILT CANVAS CARD -->
+      <div class="glass-panel rounded-2xl overflow-hidden flex flex-col border border-slate-800 shadow-xl">
+        <div class="p-3 bg-space-900/90 border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-arrows-up-down text-indigo-400 text-xs"></i>
+            <h3 class="text-xs font-extrabold text-slate-200 uppercase tracking-wider">
+              Side View: Orbital Tilt & Ecliptic Plane Alignment
+            </h3>
+          </div>
+          <span id="verticalOffsetBadge" class="font-mono text-[11px] font-bold text-emerald-300 bg-emerald-950/60 px-2.5 py-0.5 rounded-lg border border-emerald-800/60">
+            Vertical Offset: 0 km (On Ecliptic Node)
+          </span>
+        </div>
+
+        <div class="w-full h-[160px] bg-space-950 relative">
+          <canvas id="sideTiltCanvas" class="w-full h-full block"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: LIVE SKY VIEWPORT & MISSION VERIFIER (4 COLS) -->
+    <div class="lg:col-span-4 flex flex-col gap-4">
+      
+      <!-- LIVE VIEW FROM EARTH SKY VIEWPORT CARD -->
+      <div class="glass-panel rounded-2xl p-4 flex flex-col border border-slate-800 shadow-xl">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+            <i class="fa-solid fa-eye text-indigo-400"></i> Observer Sky View from Earth
+          </h3>
+          <span id="skyPhaseBadge" class="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            Total Solar Eclipse!
+          </span>
+        </div>
+
+        <!-- Sky View Canvas Box -->
+        <div class="w-full h-[210px] rounded-xl bg-space-950 border border-slate-800 relative overflow-hidden flex items-center justify-center shadow-inner">
+          <canvas id="skyViewCanvas" class="w-full h-full block"></canvas>
+        </div>
+
+        <!-- Quick Alignment Hint Guide -->
+        <div class="mt-3 bg-space-950/90 p-3 rounded-xl border border-slate-800/90 space-y-2 text-xs">
+          <h4 class="font-bold text-slate-300 uppercase text-[10px] tracking-widest flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-info text-indigo-400"></i> Alignment Guide:
+          </h4>
+          
+          <div class="p-2 rounded-lg bg-space-900 border border-slate-800/80 flex items-start gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400 mt-1 shrink-0"></span>
+            <div>
+              <strong class="text-amber-300 block text-[11px]">Solar Eclipse Geometry:</strong>
+              <span class="text-slate-400 text-[11px] leading-relaxed">Moon is in the middle (0° position) blocking Sun's light to Earth.</span>
+            </div>
+          </div>
+
+          <div class="p-2 rounded-lg bg-space-900 border border-slate-800/80 flex items-start gap-2">
+            <span class="w-2 h-2 rounded-full bg-red-400 mt-1 shrink-0"></span>
+            <div>
+              <strong class="text-red-300 block text-[11px]">Lunar Eclipse Geometry:</strong>
+              <span class="text-slate-400 text-[11px] leading-relaxed">Earth is in the middle (180° position) blocking Sun's light to Moon.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MISSION VERIFICATION ACTION PANEL -->
+      <div class="glass-panel rounded-2xl p-4 border border-slate-800 shadow-xl flex flex-col gap-3">
+        <h3 class="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-list-check text-indigo-400"></i> Verify Eclipse Alignments:
+        </h3>
+        
+        <!-- Challenge 1 Verify Button -->
+        <button onclick="verifyAlignment('solar')" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-extrabold text-xs shadow-lg shadow-amber-600/20 transition transform active:scale-95 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-circle-check"></i> Verify Solar Eclipse Alignment (Sun ➔ Moon ➔ Earth)
+        </button>
+
+        <!-- Challenge 2 Verify Button -->
+        <button onclick="verifyAlignment('lunar')" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-red-600 via-red-500 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-xs shadow-lg shadow-red-600/20 transition transform active:scale-95 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-circle-check"></i> Verify Lunar Eclipse Alignment (Sun ➔ Earth ➔ Moon)
+        </button>
+
+        <!-- Dynamic Feedback Display Box -->
+        <div id="verifyFeedbackBox" class="p-3.5 rounded-xl bg-space-950 border border-slate-800 text-xs text-slate-300 hidden transition-all">
+          <!-- Feedback populated dynamically -->
+        </div>
+      </div>
+
+      <!-- MISSION COMPLETE CELEBRATION BANNER (HIDDEN UNTIL BOTH DONE) -->
+      <div id="missionCompleteCard" class="hidden glass-panel rounded-2xl p-5 border border-emerald-500/50 bg-gradient-to-br from-emerald-950/80 via-space-900 to-space-950 shadow-2xl flex-col items-center text-center gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-2xl animate-bounce">
+          <i class="fa-solid fa-award"></i>
+        </div>
+        <div>
+          <h3 class="text-base sm:text-lg font-extrabold text-emerald-300 uppercase tracking-wide">Accomplished!</h3>
+          <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+            Awesome job! You have accurately arranged the Sun, Earth, and Moon for both <strong>Solar</strong> and <strong>Lunar</strong> eclipses, mastering shadow cones and orbital node alignments!
+          </p>
+        </div>
+        <button onclick="resetSimulation()" class="mt-1 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition">
+          Practice Again
+        </button>
+      </div>
+
+    </div>
+
+  </main>
+
+
+  <!-- JAVASCRIPT SIMULATION CORE -->
+  <script>
+    // ==========================================
+    // SIMULATION STATE MANAGEMENT
+    // ==========================================
+    const state = {
+      moonAngle: 0, // 0° = New Moon (Solar alignment point), 180° = Full Moon (Lunar alignment point)
+      isNodeAligned: true, // true = 0° vertical offset (on ecliptic node), false = tilted 5.14°
+      
+      // Objective 2 Mission Completion
+      solarCompleted: false,
+      lunarCompleted: false,
+    };
+
+    // Canvas Contexts
+    const topCanvas = document.getElementById('topOrbitCanvas');
+    const topCtx = topCanvas.getContext('2d');
+
+    const sideCanvas = document.getElementById('sideTiltCanvas');
+    const sideCtx = sideCanvas.getContext('2d');
+
+    const skyCanvas = document.getElementById('skyViewCanvas');
+    const skyCtx = skyCanvas.getContext('2d');
+
+
+    // ==========================================
+    // RESPONSIVE CANVAS RESIZING & HIGH DPI
+    // ==========================================
+    function resizeCanvases() {
+      [topCanvas, sideCanvas, skyCanvas].forEach(c => {
+        if (!c) return;
+        const rect = c.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        c.width = rect.width * dpr;
+        c.height = rect.height * dpr;
+      });
+      renderAll();
+    }
+    window.addEventListener('resize', resizeCanvases);
+
+
+    // ==========================================
+    // 1. TOP-DOWN WORKBENCH CANVAS RENDERER
+    // ==========================================
+    function renderTopOrbit() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = topCanvas.width / dpr;
+      const h = topCanvas.height / dpr;
+
+      topCtx.save();
+      topCtx.scale(dpr, dpr);
+
+      // Deep Space Background
+      topCtx.fillStyle = '#060913';
+      topCtx.fillRect(0, 0, w, h);
+
+      const cx = w * 0.52;
+      const cy = h * 0.5;
+      const rOrbit = 125;
+
+      // SUN LIGHTING EFFECTS (Sun rays coming from Left Edge)
+      const sunGrad = topCtx.createLinearGradient(0, cy, cx, cy);
+      sunGrad.addColorStop(0, 'rgba(255, 187, 28, 0.28)');
+      sunGrad.addColorStop(0.6, 'rgba(255, 187, 28, 0.08)');
+      sunGrad.addColorStop(1, 'rgba(255, 187, 28, 0.01)');
+      topCtx.fillStyle = sunGrad;
+      topCtx.fillRect(0, 0, cx, h);
+
+      // Sun Body Graphic on Left Edge
+      const sunBodyGrad = topCtx.createRadialGradient(0, cy, 10, 0, cy, 70);
+      sunBodyGrad.addColorStop(0, '#ffffff');
+      sunBodyGrad.addColorStop(0.2, '#fde047');
+      sunBodyGrad.addColorStop(0.7, '#f59e0b');
+      sunBodyGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+      topCtx.fillStyle = sunBodyGrad;
+      topCtx.beginPath();
+      topCtx.arc(0, cy, 70, 0, Math.PI * 2);
+      topCtx.fill();
+
+      // SUN Label
+      topCtx.fillStyle = '#fde047';
+      topCtx.font = 'extrabold 12px Inter';
+      topCtx.fillText('SUN (Light Source)', 12, cy - 25);
+      topCtx.font = '500 10px Inter';
+      topCtx.fillStyle = '#f59e0b';
+      topCtx.fillText('Parallel Sunlight Rays ➔', 12, cy + 30);
+
+      // EARTH MOON ORBITAL PATH
+      topCtx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+      topCtx.lineWidth = 1.5;
+      topCtx.setLineDash([4, 4]);
+      topCtx.beginPath();
+      topCtx.arc(cx, cy, rOrbit, 0, Math.PI * 2);
+      topCtx.stroke();
+      topCtx.setLineDash([]);
+
+      // EARTH'S SHADOW CONES (Casting to the Right away from Sun)
+      // 1. Earth Penumbra (Lighter Outer Shadow)
+      topCtx.fillStyle = 'rgba(49, 46, 129, 0.22)';
+      topCtx.beginPath();
+      topCtx.moveTo(cx, cy - 18);
+      topCtx.lineTo(w + 20, cy - 48);
+      topCtx.lineTo(w + 20, cy + 48);
+      topCtx.lineTo(cx, cy + 18);
+      topCtx.fill();
+
+      // 2. Earth Umbra (Dark Inner Shadow Cone)
+      topCtx.fillStyle = 'rgba(127, 29, 29, 0.65)';
+      topCtx.beginPath();
+      topCtx.moveTo(cx, cy - 18);
+      topCtx.lineTo(cx + 250, cy - 4);
+      topCtx.lineTo(cx + 250, cy + 4);
+      topCtx.lineTo(cx, cy + 18);
+      topCtx.fill();
+
+      // Earth Shadow Label
+      topCtx.fillStyle = 'rgba(252, 165, 165, 0.7)';
+      topCtx.font = 'bold 10px Inter';
+      topCtx.fillText('Earth Umbra Cone', cx + 110, cy - 7);
+
+      // EARTH BODY
+      topCtx.fillStyle = '#2563eb';
+      topCtx.beginPath();
+      topCtx.arc(cx, cy, 18, 0, Math.PI * 2);
+      topCtx.fill();
+
+      // Earth Atmosphere Glow
+      topCtx.strokeStyle = 'rgba(96, 165, 250, 0.6)';
+      topCtx.lineWidth = 2;
+      topCtx.beginPath();
+      topCtx.arc(cx, cy, 19, 0, Math.PI * 2);
+      topCtx.stroke();
+
+      // Earth Night Side Shadow Half
+      topCtx.fillStyle = '#090d16';
+      topCtx.beginPath();
+      topCtx.arc(cx, cy, 18, -Math.PI / 2, Math.PI / 2, false);
+      topCtx.fill();
+
+      // Earth Label
+      topCtx.fillStyle = '#ffffff';
+      topCtx.font = 'bold 11px Inter';
+      topCtx.textAlign = 'center';
+      topCtx.fillText('EARTH', cx, cy + 34);
+
+      // MOON POSITION CALCULATION
+      // Angle: 0° = New Moon (Left of Earth), 180° = Full Moon (Right of Earth)
+      const rad = (state.moonAngle * Math.PI) / 180;
+      const mx = cx - rOrbit * Math.cos(rad);
+      const my = cy + rOrbit * Math.sin(rad);
+
+      // MOON'S SHADOW CONES (Casting to the Right away from Sun)
+      // When Moon is at 0° (New Moon), its shadow points directly at Earth!
+      topCtx.fillStyle = 'rgba(239, 68, 68, 0.45)';
+      topCtx.beginPath();
+      topCtx.moveTo(mx, my - 6);
+      topCtx.lineTo(mx + 140, my - 1);
+      topCtx.lineTo(mx + 140, my + 1);
+      topCtx.lineTo(mx, my + 6);
+      topCtx.fill();
+
+      // Moon Body Disc
+      topCtx.fillStyle = '#e2e8f0';
+      topCtx.beginPath();
+      topCtx.arc(mx, my, 9, 0, Math.PI * 2);
+      topCtx.fill();
+
+      // Moon Night Side Shadow
+      topCtx.fillStyle = '#0f172a';
+      topCtx.beginPath();
+      topCtx.arc(mx, my, 9, -Math.PI / 2, Math.PI / 2, false);
+      topCtx.fill();
+
+      // Selected Moon Target Halo
+      topCtx.strokeStyle = '#f59e0b';
+      topCtx.lineWidth = 2;
+      topCtx.beginPath();
+      topCtx.arc(mx, my, 14, 0, Math.PI * 2);
+      topCtx.stroke();
+
+      // Moon Label
+      topCtx.fillStyle = '#f8fafc';
+      topCtx.font = 'bold 11px Inter';
+      topCtx.fillText('MOON', mx, my - 18);
+
+      topCtx.restore();
+    }
+
+
+    // ==========================================
+    // 2. SIDE-VIEW EDGE-ON TILT CANVAS RENDERER
+    // ==========================================
+    function renderSideTilt() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = sideCanvas.width / dpr;
+      const h = sideCanvas.height / dpr;
+
+      sideCtx.save();
+      sideCtx.scale(dpr, dpr);
+
+      sideCtx.fillStyle = '#060913';
+      sideCtx.fillRect(0, 0, w, h);
+
+      const cx = w * 0.52;
+      const cy = h * 0.5;
+
+      // Ecliptic Plane Reference Line (0° Height)
+      sideCtx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+      sideCtx.setLineDash([5, 4]);
+      sideCtx.beginPath();
+      sideCtx.moveTo(40, cy);
+      sideCtx.lineTo(w - 40, cy);
+      sideCtx.stroke();
+      sideCtx.setLineDash([]);
+
+      sideCtx.fillStyle = '#94a3b8';
+      sideCtx.font = '10px Inter';
+      sideCtx.fillText('Ecliptic Plane (Earth-Sun Orbit Level)', 45, cy - 6);
+
+      // Earth Shadow Cone in Side View
+      sideCtx.fillStyle = 'rgba(185, 28, 28, 0.35)';
+      sideCtx.beginPath();
+      sideCtx.moveTo(cx, cy - 13);
+      sideCtx.lineTo(w - 30, cy - 22);
+      sideCtx.lineTo(w - 30, cy + 22);
+      sideCtx.lineTo(cx, cy + 13);
+      sideCtx.fill();
+
+      // Orbit Slope Line (Tilted vs Aligned Node)
+      const tiltAngle = state.isNodeAligned ? 0 : 5.14;
+      const slope = Math.tan((tiltAngle * Math.PI) / 180);
+
+      sideCtx.strokeStyle = state.isNodeAligned ? '#10b981' : '#38bdf8';
+      sideCtx.lineWidth = 2;
+      sideCtx.beginPath();
+      sideCtx.moveTo(cx - 170, cy + 170 * slope);
+      sideCtx.lineTo(cx + 170, cy - 170 * slope);
+      sideCtx.stroke();
+
+      // Earth Body
+      sideCtx.fillStyle = '#2563eb';
+      sideCtx.beginPath();
+      sideCtx.arc(cx, cy, 13, 0, Math.PI * 2);
+      sideCtx.fill();
+
+      // Moon Position on Side View
+      const rad = (state.moonAngle * Math.PI) / 180;
+      const mx = cx - 125 * Math.cos(rad);
+      const vertOffset = state.isNodeAligned ? 0 : (38 * Math.sin(rad));
+      const my = cy - vertOffset;
+
+      // Vertical Distance Drop Line
+      sideCtx.strokeStyle = 'rgba(245, 158, 11, 0.65)';
+      sideCtx.setLineDash([2, 2]);
+      sideCtx.beginPath();
+      sideCtx.moveTo(mx, cy);
+      sideCtx.lineTo(mx, my);
+      sideCtx.stroke();
+      sideCtx.setLineDash([]);
+
+      // Moon Body
+      sideCtx.fillStyle = '#e2e8f0';
+      sideCtx.beginPath();
+      sideCtx.arc(mx, my, 7, 0, Math.PI * 2);
+      sideCtx.fill();
+
+      // Update Vertical Height Badge Text
+      const vertKm = Math.round(vertOffset * 950);
+      const badge = document.getElementById('verticalOffsetBadge');
+      if (state.isNodeAligned) {
+        badge.innerText = `Vertical Offset: 0 km (On Ecliptic Node - ECLIPSE POSSIBLE!)`;
+        badge.className = "font-mono text-[11px] font-bold text-emerald-300 bg-emerald-950/80 px-2.5 py-0.5 rounded-lg border border-emerald-800/80";
+      } else {
+        badge.innerText = `Vertical Offset: ${vertKm >= 0 ? '+' : ''}${vertKm} km (Tilted Orbit - Shadow Misses!)`;
+        badge.className = "font-mono text-[11px] font-bold text-amber-300 bg-amber-950/80 px-2.5 py-0.5 rounded-lg border border-amber-800/80";
+      }
+
+      sideCtx.restore();
+    }
+
+
+    // ==========================================
+    // 3. SKY VIEWPORT FROM EARTH RENDERER
+    // ==========================================
+    function renderSkyView() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = skyCanvas.width / dpr;
+      const h = skyCanvas.height / dpr;
+
+      skyCtx.save();
+      skyCtx.scale(dpr, dpr);
+
+      const cx = w * 0.5;
+      const cy = h * 0.5;
+      const theta = state.moonAngle % 360;
+
+      const isNew = (theta < 12 || theta > 348);
+      const isFull = (Math.abs(theta - 180) < 12);
+
+      // Sky Background
+      skyCtx.fillStyle = '#070b16';
+      skyCtx.fillRect(0, 0, w, h);
+
+      const badge = document.getElementById('skyPhaseBadge');
+
+      if (isNew && state.isNodeAligned) {
+        // TOTAL SOLAR ECLIPSE VIEW
+        skyCtx.fillStyle = '#02040a';
+        skyCtx.fillRect(0, 0, w, h);
+
+        // Solar Corona Rays Glow
+        const coronaGrad = skyCtx.createRadialGradient(cx, cy, 32, cx, cy, 85);
+        coronaGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        coronaGrad.addColorStop(0.35, 'rgba(251, 146, 60, 0.5)');
+        coronaGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        skyCtx.fillStyle = coronaGrad;
+        skyCtx.beginPath();
+        skyCtx.arc(cx, cy, 85, 0, Math.PI * 2);
+        skyCtx.fill();
+
+        // Dark Moon Blocking Sun
+        skyCtx.fillStyle = '#02040a';
+        skyCtx.beginPath();
+        skyCtx.arc(cx, cy, 36, 0, Math.PI * 2);
+        skyCtx.fill();
+
+        badge.innerText = "Total Solar Eclipse!";
+        badge.className = "text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse";
+      } 
+      else if (isFull && state.isNodeAligned) {
+        // TOTAL LUNAR ECLIPSE (BLOOD MOON) VIEW
+        const bloodGrad = skyCtx.createRadialGradient(cx - 6, cy - 6, 6, cx, cy, 38);
+        bloodGrad.addColorStop(0, '#fca5a5');
+        bloodGrad.addColorStop(0.6, '#b91c1c');
+        bloodGrad.addColorStop(1, '#450a0a');
+        skyCtx.fillStyle = bloodGrad;
+        skyCtx.beginPath();
+        skyCtx.arc(cx, cy, 38, 0, Math.PI * 2);
+        skyCtx.fill();
+
+        badge.innerText = "Total Lunar Eclipse (Blood Moon)!";
+        badge.className = "text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-lg bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse";
+      } 
+      else {
+        // STANDARD MOON PHASES VIEW
+        drawMoonPhaseDisc(skyCtx, cx, cy, 38, theta);
+
+        let phaseText = "New Moon";
+        if (theta >= 12 && theta < 78) phaseText = "Waxing Crescent";
+        else if (theta >= 78 && theta <= 102) phaseText = "First Quarter";
+        else if (theta > 102 && theta < 168) phaseText = "Waxing Gibbous";
+        else if (theta >= 168 && theta <= 192) phaseText = "Full Moon";
+        else if (theta > 192 && theta < 258) phaseText = "Waning Gibbous";
+        else if (theta >= 258 && theta <= 282) phaseText = "Third Quarter";
+        else if (theta > 282 && theta <= 348) phaseText = "Waning Crescent";
+
+        if (!state.isNodeAligned && (isNew || isFull)) {
+          phaseText += " (No Eclipse - Tilted)";
+        }
+
+        badge.innerText = phaseText;
+        badge.className = "text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700";
+      }
+
+      skyCtx.restore();
+    }
+
+    // Helper for rendering geometric moon phase disc
+    function drawMoonPhaseDisc(ctx, cx, cy, r, theta) {
+      ctx.save();
+
+      // Dark background disc
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      const rad = (theta * Math.PI) / 180;
+      const phaseFactor = Math.cos(rad);
+
+      // Lit side disc
+      ctx.fillStyle = '#f1f5f9';
+      ctx.beginPath();
+
+      if (theta >= 0 && theta <= 180) {
+        ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, false);
+        ctx.ellipse(cx, cy, r * Math.abs(phaseFactor), r, 0, Math.PI / 2, -Math.PI / 2, phaseFactor < 0);
+      } else {
+        ctx.arc(cx, cy, r, Math.PI / 2, -Math.PI / 2, false);
+        ctx.ellipse(cx, cy, r * Math.abs(phaseFactor), r, 0, -Math.PI / 2, Math.PI / 2, phaseFactor > 0);
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Global Render Trigger
+    function renderAll() {
+      renderTopOrbit();
+      renderSideTilt();
+      renderSkyView();
+    }
+
+
+    // ==========================================
+    // INTERACTIVE CONTROLS & EVENT HANDLERS
+    // ==========================================
+    function updateMoonAngle(val) {
+      state.moonAngle = parseFloat(val);
+      document.getElementById('moonAngleValue').innerText = `${val}°`;
+      renderAll();
+    }
+
+    function toggleNodeAlignment(isAligned) {
+      state.isNodeAligned = isAligned;
+      const statusText = document.getElementById('nodeStatusText');
+      if (isAligned) {
+        statusText.innerText = "Node Aligned (0° Height Offset)";
+        statusText.className = "text-[10px] text-emerald-400 font-semibold";
+      } else {
+        statusText.innerText = "Tilted 5.14° (Shadow Misses Earth/Moon)";
+        statusText.className = "text-[10px] text-amber-400 font-semibold";
+      }
+      renderAll();
+    }
+
+    function applyPreset(type) {
+      if (type === 'solar') {
+        state.moonAngle = 0;
+        state.isNodeAligned = true;
+      } else if (type === 'lunar') {
+        state.moonAngle = 180;
+        state.isNodeAligned = true;
+      }
+      document.getElementById('moonAngleSlider').value = state.moonAngle;
+      document.getElementById('moonAngleValue').innerText = `${state.moonAngle}°`;
+      document.getElementById('nodeAlignToggle').checked = true;
+      toggleNodeAlignment(true);
+      renderAll();
+    }
+
+    function resetSimulation() {
+      state.moonAngle = 0;
+      state.isNodeAligned = true;
+      state.solarCompleted = false;
+      state.lunarCompleted = false;
+
+      document.getElementById('moonAngleSlider').value = 0;
+      document.getElementById('moonAngleValue').innerText = '0°';
+      document.getElementById('nodeAlignToggle').checked = true;
+      toggleNodeAlignment(true);
+
+      document.getElementById('verifyFeedbackBox').classList.add('hidden');
+      document.getElementById('missionCompleteCard').classList.add('hidden');
+      
+      updateMissionTracker();
+      renderAll();
+    }
+
+
+    // ==========================================
+    // MOUSE & TOUCH CANVAS DRAGGING
+    // ==========================================
+    function setupCanvasDragging() {
+      let isDragging = false;
+
+      function handleDrag(e) {
+        const rect = topCanvas.getBoundingClientRect();
+        const cx = rect.left + rect.width * 0.52;
+        const cy = rect.top + rect.height * 0.5;
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+
+        let rad = Math.atan2(dy, -dx);
+        let deg = Math.round((rad * 180) / Math.PI);
+        if (deg < 0) deg += 360;
+
+        updateMoonAngle(deg);
+        document.getElementById('moonAngleSlider').value = deg;
+      }
+
+      topCanvas.addEventListener('mousedown', (e) => { isDragging = true; handleDrag(e); });
+      window.addEventListener('mousemove', (e) => { if (isDragging) handleDrag(e); });
+      window.addEventListener('mouseup', () => { isDragging = false; });
+
+      topCanvas.addEventListener('touchstart', (e) => { isDragging = true; handleDrag(e); });
+      window.addEventListener('touchmove', (e) => { if (isDragging) handleDrag(e); });
+      window.addEventListener('touchend', () => { isDragging = false; });
+    }
+
+
+    // ==========================================
+    // VERIFICATION & GUIDED FEEDBACK ENGINE
+    // ==========================================
+    function verifyAlignment(targetType) {
+      const theta = state.moonAngle % 360;
+      const isNewMoon = (theta < 12 || theta > 348);
+      const isFullMoon = (Math.abs(theta - 180) < 12);
+      const fbBox = document.getElementById('verifyFeedbackBox');
+      fbBox.classList.remove('hidden');
+
+      if (targetType === 'solar') {
+        if (isNewMoon && state.isNodeAligned) {
+          state.solarCompleted = true;
+          fbBox.className = "p-3.5 rounded-xl bg-emerald-950/90 border border-emerald-500 text-xs text-emerald-200 shadow-lg";
+          fbBox.innerHTML = `
+            <div class="flex items-start gap-2.5">
+              <i class="fa-solid fa-circle-check text-emerald-400 text-base mt-0.5"></i>
+              <div>
+                <strong class="text-emerald-300 block text-sm font-extrabold mb-0.5">ACCURATE SOLAR ECLIPSE ALIGNMENT!</strong>
+                <p class="leading-relaxed">
+                  <strong>Celestial Order:</strong> Sun ➔ Moon ➔ Earth.<br>
+                  The Moon is positioned at <strong>0° (New Moon)</strong> directly between Sun and Earth, and its umbra shadow cone reaches Earth because it is aligned on the ecliptic node!
+                </p>
+              </div>
+            </div>
+          `;
+        } else if (!isNewMoon) {
+          fbBox.className = "p-3.5 rounded-xl bg-rose-950/90 border border-rose-500 text-xs text-rose-200 shadow-lg";
+          fbBox.innerHTML = `
+            <div class="flex items-start gap-2.5">
+              <i class="fa-solid fa-circle-xmark text-rose-400 text-base mt-0.5"></i>
+              <div>
+                <strong class="text-rose-300 block text-sm font-extrabold mb-0.5">INCORRECT ALIGNMENT</strong>
+                <p class="leading-relaxed">
+                  For a Solar Eclipse, the <strong>Moon must be in the middle</strong> (between Sun and Earth at 0° New Moon). Drag the Moon to 0°!
+                </p>
+              </div>
+            </div>
+          `;
+        } else if (!state.isNodeAligned) {
+          fbBox.className = "p-3.5 rounded-xl bg-rose-950/90 border border-rose-500 text-xs text-rose-200 shadow-lg";
+          fbBox.innerHTML = `
+            <div class="flex items-start gap-2.5">
+              <i class="fa-solid fa-circle-xmark text-rose-400 text-base mt-0.5"></i>
+              <div>
+                <strong class="text-rose-300 block text-sm font-extrabold mb-0.5">INCORRECT ALIGNMENT (Orbital Tilt)</strong>
+                <p class="leading-relaxed">
+                  The Moon is at 0° New Moon, but its 5.14° orbital tilt carries its shadow ABOVE or BELOW Earth! Toggle the switch to <strong>Node Aligned</strong>.
+                </p>
+              </div>
+            </div>
+          `;
+        }
+      } 
+      else if (targetType === 'lunar') {
+        if (isFullMoon && state.isNodeAligned) {
+          state.lunarCompleted = true;
+          fbBox.className = "p-3.5 rounded-xl bg-emerald-950/90 border border-emerald-500 text-xs text-emerald-200 shadow-lg";
+          fbBox.innerHTML = `
+            <div class="flex items-start gap-2.5">
+              <i class="fa-solid fa-circle-check text-emerald-400 text-base mt-0.5"></i>
+              <div>
+                <strong class="text-emerald-300 block text-sm font-extrabold mb-0.5">ACCURATE LUNAR ECLIPSE ALIGNMENT!</strong>
+                <p class="leading-relaxed">
+                  <strong>Celestial Order:</strong> Sun ➔ Earth ➔ Moon.<br>
+                  <strong>Earth is in the middle</strong> at 180° Full Moon, casting its umbra shadow cone over the Moon as it crosses the ecliptic node!
+                </p>
+              </div>
+            </div>
+          `;
+        } else if (!isFullMoon) {
+          fbBox.className = "p-3.5 rounded-xl bg-rose-950/90 border border-rose-500 text-xs text-rose-200 shadow-lg";
+          fbBox.innerHTML = `
+            <div class="flex items-start gap-2.5">
+              <i class="fa-solid fa-circle-xmark text-rose-400 text-base mt-0.5"></i>
+              <div>
+                <strong class="text-rose-300 block text-sm font-extrabold mb-0.5">INCORRECT ALIGNMENT</strong>
+                <p class="leading-relaxed">
+                  For a Lunar Eclipse, <strong>Earth must be in the middle</strong> (Moon at 180° Full Moon position behind Earth). Drag the Moon to 180°!
+                </p>
+              </div>
+            </div>
+          `;
+        } else if (!state.isNodeAligned) {
+          fbBox.className = "p-3.5 rounded-xl bg-rose-950/90 border border-rose-500 text-xs text-rose-200 shadow-lg";
+          fbBox.innerHTML = `
+            <div class="flex items-start gap-2.5">
+              <i class="fa-solid fa-circle-xmark text-rose-400 text-base mt-0.5"></i>
+              <div>
+                <strong class="text-rose-300 block text-sm font-extrabold mb-0.5">INCORRECT ALIGNMENT (Orbital Tilt)</strong>
+                <p class="leading-relaxed">
+                  The Moon is at 180° Full Moon, but its 5.14° orbital tilt passes ABOVE or BELOW Earth's umbra cone! Toggle the switch to <strong>Node Aligned</strong>.
+                </p>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      updateMissionTracker();
+    }
+
+
+    // ==========================================
+    // UPDATE MISSION TRACKER BADGES & SUMMARY
+    // ==========================================
+    function updateMissionTracker() {
+      const solarCard = document.getElementById('missionSolarCard');
+      const solarIcon = document.getElementById('missionSolarIcon');
+      const solarBadge = document.getElementById('missionSolarBadge');
+
+      const lunarCard = document.getElementById('missionLunarCard');
+      const lunarIcon = document.getElementById('missionLunarIcon');
+      const lunarBadge = document.getElementById('missionLunarBadge');
+
+      const overallProgressText = document.getElementById('overallProgressText');
+      const overallAwardIcon = document.getElementById('overallAwardIcon');
+      const missionCompleteCard = document.getElementById('missionCompleteCard');
+
+      // Update Challenge 1: Solar Eclipse
+      if (state.solarCompleted) {
+        solarCard.className = "flex-1 lg:flex-initial bg-emerald-950/60 px-3.5 py-2 rounded-xl border border-emerald-500/50 flex items-center gap-3 transition-all";
+        solarIcon.className = "w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-xs shrink-0";
+        solarIcon.innerHTML = '<i class="fa-solid fa-check"></i>';
+        solarBadge.className = "ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+        solarBadge.innerText = "Done";
+      } else {
+        solarCard.className = "flex-1 lg:flex-initial bg-space-950 px-3.5 py-2 rounded-xl border border-slate-800 flex items-center gap-3 transition-all";
+        solarIcon.className = "w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-bold text-xs shrink-0";
+        solarIcon.innerText = "1";
+        solarBadge.className = "ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded bg-slate-800 text-slate-400";
+        solarBadge.innerText = "Pending";
+      }
+
+      // Update Challenge 2: Lunar Eclipse
+      if (state.lunarCompleted) {
+        lunarCard.className = "flex-1 lg:flex-initial bg-emerald-950/60 px-3.5 py-2 rounded-xl border border-emerald-500/50 flex items-center gap-3 transition-all";
+        lunarIcon.className = "w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-xs shrink-0";
+        lunarIcon.innerHTML = '<i class="fa-solid fa-check"></i>';
+        lunarBadge.className = "ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+        lunarBadge.innerText = "Done";
+      } else {
+        lunarCard.className = "flex-1 lg:flex-initial bg-space-950 px-3.5 py-2 rounded-xl border border-slate-800 flex items-center gap-3 transition-all";
+        lunarIcon.className = "w-7 h-7 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center font-bold text-xs shrink-0";
+        lunarIcon.innerText = "2";
+        lunarBadge.className = "ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded bg-slate-800 text-slate-400";
+        lunarBadge.innerText = "Pending";
+      }
+
+      // Update Overall Completion Counter & Accomplished Banner
+      const completedCount = (state.solarCompleted ? 1 : 0) + (state.lunarCompleted ? 1 : 0);
+      overallProgressText.innerText = `${completedCount} / 2 Completed`;
+
+      if (completedCount === 2) {
+        overallAwardIcon.className = "fa-solid fa-trophy text-emerald-400 text-sm animate-bounce";
+        overallProgressText.className = "font-mono text-xs font-bold text-emerald-300";
+        missionCompleteCard.classList.remove('hidden');
+        missionCompleteCard.classList.add('flex');
+      } else {
+        overallAwardIcon.className = "fa-solid fa-trophy text-slate-500 text-sm";
+        overallProgressText.className = "font-mono text-xs font-bold text-slate-300";
+        missionCompleteCard.classList.add('hidden');
+        missionCompleteCard.classList.remove('flex');
+      }
+    }
+
+
+    // ==========================================
+    // INITIALIZE SIMULATION ON WINDOW LOAD
+    // ==========================================
+    window.onload = function () {
+      setupCanvasDragging();
+      resizeCanvases();
+      updateMissionTracker();
+    };
+  </script>
+</body>
+</html>
